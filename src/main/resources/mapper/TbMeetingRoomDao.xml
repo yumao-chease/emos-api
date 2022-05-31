@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emos.api.db.dao.TbMeetingRoomDao">
+    <select id="searchAllMeetingRoom" resultType="HashMap">
+        SELECT id,
+               `name`
+        FROM tb_meeting_room
+        WHERE status=1
+    </select>
+    <select id="searchById" parameterType="int" resultType="HashMap">
+        SELECT id,
+               name,
+               max,
+               `desc`,
+               status
+        FROM tb_meeting_room
+        WHERE id = #{id}
+    </select>
+    <select id="searchFreeMeetingRoom" parameterType="HashMap" resultType="String">
+        SELECT temp.name
+        FROM (
+                SELECT mr.`name`, m.id
+                FROM tb_meeting_room mr
+                LEFT JOIN tb_meeting m ON mr.`name`=m.place
+                AND m.date=#{date}
+                AND(
+                    (#{start} BETWEEN m.`start` AND m.`end`) OR
+                    (#{end} BETWEEN m.`start` AND m.`end`)
+                )
+             ) temp
+        WHERE temp.id IS NULL
+    </select>
+
+    <select id="searchMeetingRoomByPage" parameterType="HashMap" resultType="HashMap">
+        SELECT mr.id,
+        mr.`name`,
+        mr.max,
+        mr.`desc`,
+        mr.`status`
+        FROM tb_meeting_room mr
+        LEFT JOIN tb_meeting m ON m.type=2 AND mr.`name`=m.place
+        <if test="name!=null">
+            WHERE mr.name LIKE '%${name}%'
+        </if>
+        GROUP BY mr.id
+        <if test="canDelete==false">
+            HAVING COUNT(m.id) > 0
+        </if>
+        <if test="canDelete==true">
+            HAVING COUNT(m.id) = 0
+        </if>
+        LIMIT #{start}, #{length}
+    </select>
+    <select id="searchMeetingRoomCount" parameterType="HashMap" resultType="long">
+        SELECT COUNT(*) FROM (
+        SELECT mr.id
+        FROM tb_meeting_room mr
+        LEFT JOIN tb_meeting m ON m.type=2 AND mr.`name`=m.place
+        <if test="name!=null">
+            WHERE mr.name LIKE '%${name}%'
+        </if>
+        GROUP BY mr.id
+        <if test="canDelete==false">
+            HAVING COUNT(m.id) > 0
+        </if>
+        <if test="canDelete==true">
+            HAVING COUNT(m.id) = 0
+        </if>
+        ) AS temp
+    </select>
+    <insert id="insert" parameterType="com.example.emos.api.db.pojo.TbMeetingRoom">
+        INSERT INTO tb_meeting_room
+        SET name=#{name},
+        max=#{max}
+        <if test="desc!=null">
+            ,`desc`=#{desc}
+        </if>
+        <if test="status!=null">
+            ,status=#{status}
+        </if>
+    </insert>
+    <update id="update" parameterType="com.example.emos.api.db.pojo.TbMeetingRoom">
+        UPDATE tb_meeting_room
+        SET name=#{name},
+            max=#{max},
+            `desc`=#{desc},
+            status=#{status}
+        WHERE id=#{id}
+    </update>
+    <select id="searchCanDelete" resultType="boolean">
+        SELECT IF( SUM( temp.meetings ) > 0, FALSE, TRUE ) AS result FROM (
+        SELECT COUNT( m.id ) AS meetings
+        FROM tb_meeting_room mr
+        JOIN tb_meeting m ON m.type=2 AND mr.`name`=m.place
+        WHERE mr.id IN
+        <foreach collection="array" open="(" separator="," close=")" item="one">
+            #{one}
+        </foreach>
+        GROUP BY mr.id
+        ) temp
+    </select>
+
+    <delete id="deleteMeetingRoomByIds">
+        DELETE FROM tb_meeting_room
+        WHERE id IN
+        <foreach collection="array" open="(" separator="," close=")" item="one">
+            #{one}
+        </foreach>
+    </delete>
+
+</mapper>

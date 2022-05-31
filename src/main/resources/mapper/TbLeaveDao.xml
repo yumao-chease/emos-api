@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emos.api.db.dao.TbLeaveDao">
+    <select id="searchLeaveByPage" parameterType="HashMap" resultType="HashMap">
+        SELECT l.id,
+        u.id AS userId,
+        u.`name`,
+        d.dept_name AS deptName,
+        DATE_FORMAT(l.`start`,'%Y-%m-%d %H:%i') AS `start`,
+        DATE_FORMAT(l.`end`,'%Y-%m-%d %H:%i') AS `end`,
+        l.type,
+        l.`status`,
+        l.reason,
+        l.instance_id AS instanceId,
+        IF(u.id = #{myId},TRUE,FALSE) AS mine
+        FROM tb_leave l
+        JOIN tb_user u ON l.user_id = u.id
+        LEFT JOIN tb_dept d ON u.dept_id = d.id
+        WHERE 1=1
+        <if test="userId != null">
+            AND u.id=#{userId}
+        </if>
+        <if test="name != null">
+            AND u.name LIKE '%${name}%'
+        </if>
+        <if test="deptId !=null">
+            AND d.id = #{deptId}
+        </if>
+        <if test="date !=null">
+            AND #{date} BETWEEN DATE_FORMAT(l.`start`,'%Y-%m-%d') AND DATE_FORMAT(l.`end`,'%Y-%m-%d')
+        </if>
+        <if test="status !=null">
+            AND l.status = #{status}
+        </if>
+        <if test="type !=null">
+            AND l.type = #{type}
+        </if>
+        ORDER BY l.id DESC
+        LIMIT #{start}, #{length}
+    </select>
+
+    <select id="searchLeaveCount" parameterType="HashMap" resultType="long">
+        SELECT COUNT(*)
+        FROM
+        tb_leave l
+        JOIN tb_user u ON l.user_id = u.id
+        LEFT JOIN tb_dept d ON u.dept_id = d.id
+        WHERE 1=1
+        <if test="userId != null">
+            AND u.id=#{userId}
+        </if>
+        <if test="name != null">
+            AND u.name LIKE '%${name}%'
+        </if>
+        <if test="deptId !=null">
+            AND d.id = #{deptId}
+        </if>
+        <if test="date !=null">
+            AND #{date} BETWEEN DATE_FORMAT(l.`start`,'%Y-%m-%d') AND DATE_FORMAT(l.`end`,'%Y-%m-%d')
+        </if>
+        <if test="status !=null">
+            AND l.status = #{status}
+        </if>
+        <if test="type !=null">
+            AND l.type = #{type}
+        </if>
+    </select>
+    <update id="updateLeaveInstanceId" parameterType="HashMap">
+        UPDATE tb_leave
+        SET instance_id = #{instanceId}
+        WHERE id = #{id}
+    </update>
+    <select id="searchContradiction" parameterType="HashMap" resultType="long">
+        SELECT COUNT(*)
+        FROM tb_leave
+        WHERE user_id = #{userId}
+          AND `status` != 2
+          AND ((#{start} BETWEEN `start` AND `end`) OR (#{end} BETWEEN `start` AND `end`))
+    </select>
+
+    <insert id="insert" parameterType="com.example.emos.api.db.pojo.TbLeave" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_leave
+        SET user_id = #{userId},
+            reason  = #{reason},
+            `start` = #{start},
+            `end`   = #{end},
+            days    = #{days},
+            `type`  = #{type}
+    </insert>
+    <select id="searchInstanceIdById" parameterType="int" resultType="String">
+        SELECT instance_id
+        FROM tb_leave
+        WHERE id = #{id}
+    </select>
+
+    <delete id="deleteLeaveById" parameterType="HashMap">
+        DELETE
+        FROM tb_leave
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND status IN (1, 2)
+    </delete>
+    <select id="searchLeaveById" parameterType="HashMap" resultType="HashMap">
+        SELECT
+        u.name,
+        u.sex,
+        d.dept_name AS dept,
+        l.type,
+        DATE_FORMAT( l.`start`, '%Y-%m-%d %H:%i' ) AS `start`,
+        DATE_FORMAT( l.`end`, '%Y-%m-%d %H:%i' ) AS `end`,
+        l.reason
+        FROM tb_leave l
+        JOIN tb_user u ON l.user_id = u.id
+        JOIN tb_dept d ON u.dept_id = d.id
+        WHERE l.id = #{id}
+        <if test="userId!=null">
+            AND u.id=#{userId}
+        </if>
+    </select>
+
+</mapper>
